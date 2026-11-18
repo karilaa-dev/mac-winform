@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <Target Name="BuildNativeTestDriver" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))"
+          Inputs="$(MSBuildProjectDirectory)/Driver.m" Outputs="$(TargetDir)libCaptionProbe.dylib">
+    <Exec Command="xcrun clang -Os -dynamiclib -fobjc-arc -framework AppKit &quot;$(MSBuildProjectDirectory)/Driver.m&quot; -o &quot;$(TargetDir)libCaptionProbe.dylib&quot;" />
+  </Target>
+</Project>

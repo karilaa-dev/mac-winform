@@ -1,0 +1,248 @@
+#!/usr/bin/env python3
+"""Build and run an unchanged SDK WinForms project using the native Mac runtime."""
+import argparse
+import fcntl
+from functools import lru_cache
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+sys.dont_write_bytecode = True
+from legacy import project_graph
+
+ROOT = Path(__file__).resolve().parent.parent
+PROJECT_SUFFIXES = {".csproj", ".vbproj", ".fsproj"}
+WINDOWS_TFM = re.compile(r"net(\d+)\.\d+-windows[\d.]*", re.IGNORECASE)
+
+
+class LaunchError(Exception):
+    pass
+
+
+def dotnet_output(arguments, directory):
+    result = subprocess.run(["dotnet", *arguments], cwd=directory, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode:
+        raise LaunchError((result.stderr + result.stdout).strip())
+    return result.stdout
+
+
+@lru_cache(maxsize=None)
+def project_info(project, config, framework=None):
+    names = "TargetFramework,TargetFrameworks,UseWindowsForms,OutputType,UseWPF,TargetFrameworkIdentifier,TargetFrameworkVersion"
+    args = ["msbuild", project.name, "-nologo", f"-getProperty:{names}", "-getItem:ProjectReference,Reference",
+            f"-p:Configuration={config}"]
+    if framework:
+        args.append(f"-p:TargetFramework={framework}")
+    output = dotnet_output(args, project.parent)
+    try:
+        # A newly installed SDK can print its first-run notice before the JSON.
+        result = json.loads(output[output.index("{"):])
+        references = [Path(item["FullPath"]).resolve() for item in result["Items"]["ProjectReference"]]
+        props = result["Properties"]
+        if props["TargetFrameworkIdentifier"] == ".NETFramework":
+            props["ClassicWinForms"] = any(it["Identity"].split(",")[0] == "System.Windows.Forms"
+                                           for it in result["Items"]["Reference"]) or props["UseWindowsForms"].lower() == "true"
+        return props, references
+    except (KeyError, ValueError) as exc:
+        raise LaunchError(f"Cannot read MSBuild properties for {project}. .NET SDK 8+ is required.\n{output}") from exc
+
+
+def entry_framework(project, config, requested):
+    props, _ = project_info(project, config)
+    if props.get("ClassicWinForms") and props["TargetFrameworkVersion"].lower().startswith("v4.") and project.suffix.lower() == ".csproj" and props["OutputType"].lower() in {"winexe", "exe"}:
+        original = "net" + props["TargetFrameworkVersion"].lstrip("vV").replace(".", "")
+        if not requested or original == requested:
+            return original
+    frameworks = (props["TargetFrameworks"] or props["TargetFramework"]).split(";")
+    for tfm in frameworks:
+        match = WINDOWS_TFM.fullmatch(tfm)
+        if not match or int(match[1]) < 5 or (requested and tfm.lower() != requested.lower()):
+            continue
+        info = project_info(project, config, tfm)[0] if props["TargetFrameworks"] else props
+        if info["UseWindowsForms"].lower() == "true" and info["OutputType"].lower() in {"exe", "winexe"}:
+            if info["UseWPF"].lower() == "true":
+                raise LaunchError(f"{project.name} also requires WPF, which the compatibility runtime does not implement.")
+            return tfm
+    raise LaunchError(f"{project.name} has no matching WinForms executable target"
+                      + (f" for {requested}" if requested else "") + ".")
+
+
+def candidates(path):
+    if path.suffix.lower() in PROJECT_SUFFIXES and path.is_file():
+        return [path]
+    if path.is_file() and path.suffix.lower() in {".sln", ".slnx"}:
+        listing = dotnet_output(["sln", path.name, "list"], path.parent)
+        paths = [path.parent / row.strip().replace("\\", "/") for row in listing.splitlines()]
+        return [p.resolve() for p in paths if p.suffix.lower() in PROJECT_SUFFIXES and p.is_file()]
+    if not path.is_dir():
+        raise LaunchError(f"Project, solution or folder not found: {path}")
+    projects = [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in PROJECT_SUFFIXES]
+    if projects:
+        return projects
+    solutions = [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in {".sln", ".slnx"}]
+    if len(solutions) == 1:
+        return candidates(solutions[0])
+    projects = []
+    for folder, dirs, files in os.walk(path):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {"bin", "obj", "node_modules", "packages", "artifacts"}]
+        projects.extend(Path(folder) / f for f in files if Path(f).suffix.lower() in PROJECT_SUFFIXES)
+    return projects
+
+
+def select_project(args):
+    path = Path(args.project).expanduser().resolve()
+    projects = sorted(set(candidates(path)))
+    if not projects:
+        raise LaunchError(f"No .NET project was found in {path}.")
+    if len(projects) == 1:
+        return projects[0], entry_framework(projects[0], args.configuration, args.framework)
+    choices, errors = [], []
+    for project in projects:
+        try:
+            choices.append((project, entry_framework(project, args.configuration, args.framework)))
+        except LaunchError as exc:
+            errors.append(str(exc))
+    if len(choices) == 1:
+        return choices[0]
+    if not choices:
+        raise LaunchError("No runnable WinForms project found.\n" + "\n".join(errors))
+    raise LaunchError("Choose a project by passing its path:\n" + "\n".join(str(p) for p, _ in choices))
+
+
+def windows_version(tfm):
+    version, platform = tfm.lower()[3:].split("-windows")
+    # Bare 'windows' implies Windows 7.0 in the SDK.
+    parts = tuple(int(part) for part in (platform or "7.0").split("."))
+    return tuple(map(int, version.split("."))), parts + (0,) * (4 - len(parts))
+
+
+def framework_map(entry, framework, config):
+    """Choose each referenced project's Windows TFM before its conditional items are read."""
+    mapping = {entry: framework}
+    pending = [(entry, framework)]
+    seen = set()
+    while pending:
+        project, current = pending.pop()
+        if (project, current) in seen:
+            continue
+        seen.add((project, current))
+        _, references = project_info(project, config, current)
+        for reference in references:
+            props, _ = project_info(reference, config)
+            tfms = (props["TargetFrameworks"] or props["TargetFramework"]).split(";")
+            windows = [tfm for tfm in tfms if WINDOWS_TFM.fullmatch(tfm)]
+            if windows:
+                # Keep the closest compatible Windows source variant, including
+                # the platform version suffix used by Win10-specific libraries.
+                parent_version = windows_version(current) if WINDOWS_TFM.fullmatch(current) else windows_version(framework)
+                compatible = [tfm for tfm in windows if all(a <= b for a, b in zip(windows_version(tfm), parent_version))]
+                selected = current if current in compatible else max(compatible, key=windows_version, default=None)
+                if selected:
+                    if reference in mapping and mapping[reference] != selected:
+                        raise LaunchError(f"{reference} requires two Windows framework variants in one build: "
+                                          f"{mapping[reference]} and {selected}.")
+                    mapping[reference] = selected
+                    pending.append((reference, selected))
+                    continue
+            # Leave framework selection for ordinary libraries to MSBuild. Check
+            # their declared variants for transitive WinForms project references.
+            pending.extend((reference, tfm) for tfm in tfms if tfm and "-" not in tfm)
+
+    root = ET.Element("Project")
+    for project, tfm in sorted(mapping.items()):
+        escaped_path = str(project).replace("%", "%25").replace("'", "%27")
+        group = ET.SubElement(root, "PropertyGroup", Condition=f"'$(MSBuildProjectFullPath)' == '{escaped_path}'")
+        ET.SubElement(group, "TargetFramework").text = tfm
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def build(project, framework, config):
+    cache = Path(os.environ.get("MAC_WINFORM_CACHE", "~/Library/Caches/mac-winform")).expanduser().resolve()
+    if cache == project.parent or project.parent in cache.parents:
+        raise LaunchError("Set MAC_WINFORM_CACHE to a directory outside the application project.")
+    key = hashlib.sha256(os.fsencode(project)).hexdigest()[:16]
+    artifacts = cache / (project.stem + "-" + key) / framework
+    artifacts.mkdir(parents=True, exist_ok=True)
+    with (artifacts / "build.lock").open("a") as lock, tempfile.TemporaryDirectory() as scratch:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        source_directory = project.parent
+        if not WINDOWS_TFM.fullmatch(framework):
+            print(f"Retargeting classic C# source from {framework} to the installed .NET 8 runtime.", flush=True)
+            project = project_graph(project, config, artifacts, dotnet_output, LaunchError)
+            framework = "net8.0-windows"
+        props_file = artifacts / "SelectedFrameworks.props"
+        contents = framework_map(project, framework, config)
+        if not props_file.exists() or props_file.read_bytes() != contents:
+            props_file.write_bytes(contents)
+        launch_file = Path(scratch) / "app-path"
+        args = ["dotnet", "build", str(project), "--configuration", config, "--artifacts-path", str(artifacts),
+                f"-p:CustomAfterMicrosoftCommonProps={props_file}",
+                f"-p:BeforeTargetFrameworkInferenceTargets={ROOT / 'build/MacWinForms.targets'}",
+                f"-p:MacWinFormsEntry={project}",
+                f"-p:MacWinFormsLaunchFile={launch_file}"]
+        result = subprocess.run(args, cwd=source_directory)
+        if result.returncode:
+            raise SystemExit(result.returncode)
+        if not launch_file.is_file():
+            raise LaunchError("MSBuild did not report an app host. Check your project's custom SDK targets.")
+        executable = Path(launch_file.read_text(encoding="utf-8-sig").strip())
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            raise LaunchError(f"MSBuild reported an app host that cannot be launched: {executable}")
+        # Some macOS versions retain a stale signature for the inode which
+        # the SDK used while patching apphost. Publish identical signed bytes
+        # on a new inode before launching (also preserves a running apphost).
+        # macOS reserves .app for bundles. A flat Mach-O with that suffix is
+        # killed at exec even with a valid signature. Its embedded DLL name is independent.
+        host_path = executable.with_name(executable.name + "-macos") if executable.suffix.lower() == ".app" else executable
+        with tempfile.TemporaryDirectory(dir=executable.parent) as staging:
+            fresh_host = Path(staging) / executable.name
+            shutil.copy2(executable, fresh_host)
+            os.replace(fresh_host, host_path)
+        return host_path
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=["run", "build"])
+    parser.add_argument("project", nargs="?", default=".", help="project file, solution, or directory (default: current directory)")
+    parser.add_argument("-c", "--configuration", default="Debug")
+    parser.add_argument("-f", "--framework", help="original Windows TFM for a multi-target project")
+    parser.add_argument("--app-path-file", type=Path, help="write the built app host path for editor integration")
+    argv = sys.argv[1:]
+    split = argv.index("--") if "--" in argv else len(argv)
+    args = parser.parse_args(argv[:split])
+    app_args = argv[split + 1:]
+    if args.action == "build" and app_args:
+        parser.error("Application arguments require run.")
+    if sys.platform != "darwin":
+        raise LaunchError("This launcher requires macOS.")
+    if not shutil.which("dotnet"):
+        raise LaunchError("Install the stock .NET SDK (8 or newer) and add dotnet to PATH.")
+    project, framework = select_project(args)
+    modern = WINDOWS_TFM.fullmatch(framework)
+    if modern and int(modern[1]) < 8:
+        print(f"Retargeting {framework} to net8.0 for the native Mac runtime.", flush=True)
+    executable = build(project, framework, args.configuration)
+    if args.app_path_file:
+        args.app_path_file.write_text(str(executable) + "\n", encoding="utf-8")
+    print(f"Mac app host: {executable}", flush=True)
+    if args.action == "run":
+        os.chdir(project.parent)
+        os.execv(executable, [str(executable), *app_args])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (LaunchError, OSError) as exc:
+        print(f"mac-winform: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(130)

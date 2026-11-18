@@ -1,0 +1,17 @@
+<Project>
+  <!-- Keep SDK logical names and satellite assembly metadata. All generated files are under obj. -->
+  <Target Name="MacWinFormsPrepareDesignerResources" BeforeTargets="CoreResGen" Condition="'$(_MacFormsProject)' == 'true'">
+    <ItemGroup>
+      <_MacResx Include="@(EmbeddedResource)" Condition="'%(EmbeddedResource.Type)' == 'Resx' and '%(EmbeddedResource.GenerateResource)' != 'false'" />
+    </ItemGroup>
+    <WriteLinesToFile Condition="'@(_MacResx)' != ''" File="$(IntermediateOutputPath)MacResources.inputs" Lines="@(_MacResx->'%(FullPath)&#x9;%(ManifestResourceName)')" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Exec Condition="'@(_MacResx)' != ''" WorkingDirectory="$(IntermediateOutputPath)" Command="python3 &quot;$(MSBuildThisFileDirectory)../bin/resources.py&quot; prepare" />
+    <ItemGroup>
+      <EmbeddedResource Remove="@(_MacResx)" />
+      <EmbeddedResource Include="@(_MacResx->'$(IntermediateOutputPath)MacResources/%(ManifestResourceName).resx')" />
+    </ItemGroup>
+  </Target>
+  <Target Name="MacWinFormsWrapDesignerResources" AfterTargets="CoreResGen" Condition="'@(_MacResx)' != ''">
+    <Exec WorkingDirectory="$(IntermediateOutputPath)" Command="python3 &quot;$(MSBuildThisFileDirectory)../bin/resources.py&quot; wrap" />
+  </Target>
+</Project>
