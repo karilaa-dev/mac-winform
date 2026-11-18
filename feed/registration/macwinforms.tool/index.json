@@ -1,0 +1,29 @@
+{
+  "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/index.json",
+  "count": 1,
+  "items": [
+    {
+      "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/index.json#page",
+      "lower": "0.3.0",
+      "upper": "0.3.0",
+      "count": 1,
+      "items": [
+        {
+          "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/0.3.0.json",
+          "packageContent": "https://github.com/karilaa-dev/mac-winform/releases/download/v0.3.0/MacWinForms.Tool.0.3.0.nupkg",
+          "registration": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/index.json",
+          "catalogEntry": {
+            "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/0.3.0.json#catalog",
+            "id": "MacWinForms.Tool",
+            "version": "0.3.0",
+            "description": "Run WinForms on macOS",
+            "authors": "karilaa-dev",
+            "listed": true,
+            "published": "2026-11-18T00:00:00Z",
+            "dependencyGroups": []
+          }
+        }
+      ]
+    }
+  ]
+}

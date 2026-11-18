@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RollForward>Major</RollForward>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>dotnet-winforms</ToolCommandName>
+    <PackageId>MacWinForms.Tool</PackageId>
+    <Version>0.3.0</Version>
+    <Authors>karilaa-dev</Authors>
+    <Description>Build and run C# Windows Forms projects natively on macOS.</Description>
+    <RepositoryUrl>https://github.com/karilaa-dev/mac-winform</RepositoryUrl>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+    <ProjectReference Include="../runtime/MacWinForms.csproj" PrivateAssets="all" />
+    <Content Include="../build/*.targets;../build/analyzers/*.dll;../notices/*.txt"
+             CopyToOutputDirectory="PreserveNewest" Pack="false" />
+    <Content Update="../build/*.targets" Link="build/%(Filename)%(Extension)" />
+    <Content Update="../build/analyzers/*.dll" Link="build/analyzers/%(Filename)%(Extension)" />
+    <Content Update="../notices/*.txt" Link="notices/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

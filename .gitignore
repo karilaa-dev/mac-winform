@@ -5,4 +5,5 @@ __pycache__/
 /runtime/bin/
 /tests/**/bin/
 /tools/**/bin/
-/examples/VibeHive/
+/cli/bin/
+/examples/

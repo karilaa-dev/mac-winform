@@ -8,9 +8,6 @@ import tempfile
 import unittest
 
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
 @unittest.skipUnless(sys.platform == "darwin", "The app host and UI bridge require macOS.")
 class LauncherIntegration(unittest.TestCase):
     def test_classic_project_with_linked_source_and_sdk_reference(self):
@@ -43,9 +40,9 @@ class Entry {
  <ProjectReference Include="../Model/Model.csproj" /></ItemGroup>
  <Import Project="$(MSBuildToolsPath)/Microsoft.CSharp.targets"/></Project>""")
             snapshot = {p:p.read_bytes() for p in app.parent.rglob("*") if p.is_file()}
-            env = dict(os.environ,MAC_WINFORM_CACHE=str(work / "artifacts"))
-            result = subprocess.run([str(ROOT / "bin/mac-winform"), "run", str(app)],
-                                    env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            env = dict(os.environ, MAC_WINFORM_CACHE=str(work / "build outputs"))
+            result = subprocess.run(["dotnet", "winforms"], cwd=app, env=env,
+                                    text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=120)
             self.assertEqual(result.returncode,0,result.stdout)
             self.assertEqual(result.stdout.splitlines()[-1],"Classic")
             self.assertEqual(snapshot,{p:p.read_bytes() for p in app.parent.rglob("*") if p.is_file()})
@@ -99,6 +96,7 @@ class Program {
             cwd = Environment.CurrentDirectory,
             args
         }));
+        if (Array.IndexOf(args, "--child-exit") >= 0) Environment.ExitCode = 19;
     }
 }
 }
@@ -106,17 +104,19 @@ class Program {
             inputs = {p: p.read_bytes() for p in app.parent.rglob("*") if p.is_file()}
             env = dict(os.environ, MAC_WINFORM_CACHE=str(work / "build outputs"))
             app_path_file = work / "built app path"
-            result = subprocess.run([str(ROOT / "bin/mac-winform"), "run", str(app.parent),
-                                     "--app-path-file", str(app_path_file), "--", "hello world", "--flag"],
-                                    cwd=work, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            self.assertEqual(result.returncode, 0, result.stdout)
-            self.assertIn("Retargeting net6.0-windows to net8.0", result.stdout)
+            forwarded = ["hello world", "--project", "$HOME", "--child-exit"]
+            result = subprocess.run(["dotnet", "winforms", "run", "--project", str(app.parent),
+                                     "--app-path-file", str(app_path_file), "--", *forwarded],
+                                    cwd=work, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,timeout=120)
+            self.assertEqual(result.returncode, 19, result.stdout)
             payload = json.loads(result.stdout.splitlines()[-1])
             self.assertEqual(payload, {"baseType": True, "config": "Example.Application.ApplicationConfiguration",
                                        "point": 7, "title": "Inherited title", "cwd": str(app),
-                                       "args": ["hello world", "--flag"]})
+                                       "args": forwarded})
             exe = Path(app_path_file.read_text().strip())
             self.assertEqual(exe.name, "Custom.Host")
+            runtime = json.loads((exe.parent / (exe.name + ".runtimeconfig.json")).read_text())
+            self.assertEqual(runtime["runtimeOptions"]["tfm"], "net8.0")
             self.assertIn("Mach-O", subprocess.check_output(["file", str(exe)], text=True))
             self.assertTrue((exe.parent / "libMacForms.dylib").is_file())
             self.assertEqual(inputs, {p: p.read_bytes() for p in app.parent.rglob("*") if p.is_file()})

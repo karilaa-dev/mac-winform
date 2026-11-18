@@ -1,6 +1,7 @@
 <Project>
   <!-- Imported after the original project's declarations, before SDK framework inference. -->
   <PropertyGroup>
+    <MacWinFormsToolAssembly Condition="'$(MacWinFormsToolAssembly)' == ''">$(MSBuildThisFileDirectory)../MacWinForms.Tool.dll</MacWinFormsToolAssembly>
     <_MacFormsProject Condition="'$(UseWindowsForms)' == 'true'">true</_MacFormsProject>
     <_MacWindowsTFM Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '(?i)^net[0-9]+\.[0-9]+-windows[0-9.]*$'))">true</_MacWindowsTFM>
   </PropertyGroup>
@@ -26,7 +27,12 @@
   </PropertyGroup>
   <ItemGroup Condition="'$(_MacFormsProject)' == 'true'">
     <FrameworkReference Remove="Microsoft.WindowsDesktop.App;Microsoft.WindowsDesktop.App.WindowsForms" />
-    <ProjectReference Include="$(MSBuildThisFileDirectory)../runtime/MacWinForms.csproj" />
+    <Reference Include="MacWinForms">
+      <HintPath>$(MSBuildThisFileDirectory)../MacWinForms.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Content Include="$(MSBuildThisFileDirectory)../libMacForms.dylib" Link="libMacForms.dylib"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Using Include="System.Drawing;System.Windows.Forms" Condition="'$(MSBuildProjectExtension)' == '.csproj' and ('$(ImplicitUsings)' == 'enable' or '$(ImplicitUsings)' == 'true')" />
   </ItemGroup>
 
