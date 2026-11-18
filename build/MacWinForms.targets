@@ -1,0 +1,53 @@
+<Project>
+  <!-- Imported after the original project's declarations, before SDK framework inference. -->
+  <PropertyGroup>
+    <_MacFormsProject Condition="'$(UseWindowsForms)' == 'true'">true</_MacFormsProject>
+    <_MacWindowsTFM Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '(?i)^net[0-9]+\.[0-9]+-windows[0-9.]*$'))">true</_MacWindowsTFM>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_MacWindowsTFM)' == 'true'">
+    <TargetFramework>$([System.Text.RegularExpressions.Regex]::Replace('$(TargetFramework)', '(?i)-windows.*$', ''))</TargetFramework>
+    <TargetFramework Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '(?i)^net[567]\.'))">net8.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <TargetPlatformIdentifier></TargetPlatformIdentifier>
+    <TargetPlatformVersion></TargetPlatformVersion>
+    <SupportedOSPlatformVersion></SupportedOSPlatformVersion>
+    <RuntimeIdentifier></RuntimeIdentifier>
+    <RuntimeIdentifiers></RuntimeIdentifiers>
+    <SelfContained>false</SelfContained>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ImportWindowsDesktopTargets>false</ImportWindowsDesktopTargets>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_MacFormsProject)' == 'true'">
+    <UseWindowsForms>false</UseWindowsForms>
+    <UseAppHost>true</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_MacFormsProject)' == 'true'">
+    <FrameworkReference Remove="Microsoft.WindowsDesktop.App;Microsoft.WindowsDesktop.App.WindowsForms" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../runtime/MacWinForms.csproj" />
+    <Using Include="System.Drawing;System.Windows.Forms" Condition="'$(MSBuildProjectExtension)' == '.csproj' and ('$(ImplicitUsings)' == 'enable' or '$(ImplicitUsings)' == 'true')" />
+  </ItemGroup>
+
+  <Target Name="MacWinFormsCheck" BeforeTargets="PrepareForBuild" Condition="'$(MSBuildProjectFullPath)' == '$(MacWinFormsEntry)'">
+    <Error Condition="'$(_MacFormsProject)' != 'true' or ('$(_MacWindowsTFM)' != 'true')"
+           Text="Choose an SDK-style WinForms executable targeting net5.0-windows or newer." />
+    <Error Condition="'$(UseWPF)' == 'true'"
+           Text="This project uses WPF. The native Mac compatibility runtime implements WinForms controls only." />
+    <Error Condition="'$(OutputType)' != 'WinExe' and '$(OutputType)' != 'Exe'"
+           Text="Choose the executable WinForms project in this solution." />
+  </Target>
+
+  <!-- Use Microsoft's original WinForms bootstrap generator. The compiler loads these build-only
+       analyzers. They are never copied into the application output. -->
+  <ItemGroup Condition="'$(MacWinFormsClassic)' != 'true' and '$(_MacFormsProject)' == 'true' and '$(MSBuildProjectExtension)' == '.csproj'">
+    <Analyzer Include="$(MSBuildThisFileDirectory)analyzers/*.dll" />
+    <CompilerVisibleProperty Include="ApplicationVisualStyles;ApplicationUseCompatibleTextRendering;ApplicationHighDpiMode;ApplicationDefaultFont" />
+  </ItemGroup>
+
+  <Target Name="MacWinFormsReportApp" AfterTargets="Build" Condition="'$(MSBuildProjectFullPath)' == '$(MacWinFormsEntry)'">
+    <WriteLinesToFile File="$(MacWinFormsLaunchFile)" Lines="$(TargetDir)$(AssemblyName)" Overwrite="true" />
+  </Target>
+  <Import Project="$(MSBuildThisFileDirectory)Resources.targets" />
+</Project>

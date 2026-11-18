@@ -1,0 +1,92 @@
+{
+  "Client": [
+    750,
+    450
+  ],
+  "Split": 198,
+  "Folder": "Collection\\Playlists",
+  "Formats": [
+    "CD",
+    "Vinyl"
+  ],
+  "Repeat": true,
+  "Volume": 7,
+  "Progress": 7,
+  "Album": "Blue Train",
+  "Tracks": 3,
+  "LastTrack": "Footprints",
+  "Clicks": 1,
+  "Status": "Evening mix",
+  "Bounds": [
+    {
+      "Type": "SplitterPanel",
+      "Left": 0,
+      "Top": 0,
+      "Width": 198,
+      "Height": 450
+    },
+    {
+      "Type": "SplitterPanel",
+      "Left": 202,
+      "Top": 0,
+      "Width": 548,
+      "Height": 450
+    },
+    {
+      "Type": "TreeView",
+      "Left": 10,
+      "Top": 34,
+      "Width": 176,
+      "Height": 115
+    },
+    {
+      "Type": "CheckedListBox",
+      "Left": 10,
+      "Top": 187,
+      "Width": 176,
+      "Height": 76
+    },
+    {
+      "Type": "TextBox",
+      "Left": 10,
+      "Top": 33,
+      "Width": 268,
+      "Height": 23
+    },
+    {
+      "Type": "Button",
+      "Left": 290,
+      "Top": 31,
+      "Width": 88,
+      "Height": 27
+    },
+    {
+      "Type": "ListView",
+      "Left": 10,
+      "Top": 96,
+      "Width": 515,
+      "Height": 105
+    },
+    {
+      "Type": "DataGridView",
+      "Left": 10,
+      "Top": 237,
+      "Width": 515,
+      "Height": 114
+    },
+    {
+      "Type": "ProgressBar",
+      "Left": 10,
+      "Top": 372,
+      "Width": 265,
+      "Height": 19
+    },
+    {
+      "Type": "Label",
+      "Left": 10,
+      "Top": 407,
+      "Width": 515,
+      "Height": 24
+    }
+  ]
+}

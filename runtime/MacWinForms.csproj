@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NativeBridgeBase Condition="'$(ArtifactsPath)' != ''">$(ArtifactsPath)/obj/MacWinForms/</NativeBridgeBase>
+    <NativeBridgeBase Condition="'$(NativeBridgeBase)' == ''">$(BaseIntermediateOutputPath)</NativeBridgeBase>
+    <NativeBridge>$(NativeBridgeBase)native/$(Configuration)/libMacForms.dylib</NativeBridge>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/*.ico" LogicalName="%(Filename)%(Extension)" />
+    <Content Include="$(NativeBridge)" Link="libMacForms.dylib" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Compile Remove="native/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <BridgeSource Include="$(MSBuildThisFileDirectory)../native/*.m" />
+    <BridgeHeader Include="$(MSBuildThisFileDirectory)../native/*.h" />
+  </ItemGroup>
+  <Target Name="BuildAppKitBridge" BeforeTargets="PrepareForBuild" Inputs="@(BridgeSource);@(BridgeHeader);$(MSBuildProjectFullPath)" Outputs="$(NativeBridge)">
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(NativeBridge)'))" />
+    <Exec Command="xcrun clang -Os -dynamiclib -fobjc-arc -framework Cocoa -framework UniformTypeIdentifiers -install_name @rpath/libMacForms.dylib @(BridgeSource->'&quot;%(FullPath)&quot;', ' ') -o &quot;$(NativeBridge)&quot;" />
+  </Target>
+</Project>

@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+/dist/
+**/obj/
+/runtime/bin/
+/tests/**/bin/
+/tools/**/bin/
+/examples/VibeHive/
