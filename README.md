@@ -31,13 +31,17 @@ You can also pass a solution or select the original Windows target with `-f net8
 
 ### Using stock `dotnet run` and MSBuild
 
-For a single-target SDK project, you can explicitly import the installed targets.
+For a single-target SDK project, you can explicitly import the installed targets. Both commands below work with SDK 8 and 9.
 
 ```sh
-dotnet run --project ./MyApp.csproj "-p:BeforeTargetFrameworkInferenceTargets=$(dotnet winforms --print-targets)"
+targets="$(dotnet winforms --print-targets)"
+BeforeTargetFrameworkInferenceTargets="$targets" dotnet run --project ./MyApp.csproj
+dotnet msbuild ./MyApp.csproj /restore /t:Build,Run "/p:BeforeTargetFrameworkInferenceTargets=$targets"
 ```
 
-The `-p:` argument sets an MSBuild property. With `dotnet msbuild`, the equivalent spelling is `/p:`. Arguments after `--` go to the application. For solutions, classic projects, multi-target builds, or isolated output, use `dotnet winforms` to handle project discovery, target selection, and launch. [Microsoft .NET tools](https://learn.microsoft.com/en-us/dotnet/core/tools/global-tools#invoke-a-global-tool) · [dotnet run options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-run)
+With SDK 9, `dotnet run --project ./MyApp.csproj "-p:BeforeTargetFrameworkInferenceTargets=$targets"` also works. SDK 8 applies this command-line property at build time but looks in the original Windows output directory at launch. The environment-variable form applies to both stages.
+
+The `/p:` switch sets an MSBuild property. Arguments after `--` go to the application. For solutions, classic projects, multi-target builds, or isolated output, use `dotnet winforms` to handle project discovery, target selection, and launch. [Microsoft .NET tools](https://learn.microsoft.com/en-us/dotnet/core/tools/global-tools#invoke-a-global-tool) · [dotnet run options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-run)
 
 ## Compatibility
 
