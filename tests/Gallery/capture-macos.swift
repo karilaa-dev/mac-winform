@@ -23,12 +23,12 @@ func command(_ executable: URL, _ arguments: [String]) throws {
 func capture(_ output: URL) throws {
     let fm = FileManager.default
     let gallery = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-    let launcher = gallery.appendingPathComponent("../../bin/mac-winform").standardizedFileURL
     let scratch = fm.temporaryDirectory.appendingPathComponent("winforms-gallery-" + UUID().uuidString)
     try fm.createDirectory(at: scratch, withIntermediateDirectories: true)
     defer { try? fm.removeItem(at: scratch) }
     let appPath = scratch.appendingPathComponent("app-path")
-    try command(launcher, ["build", gallery.path, "--app-path-file", appPath.path])
+    try command(URL(fileURLWithPath: "/usr/bin/env"), ["dotnet", "winforms", "build", gallery.path,
+                                                       "--app-path-file", appPath.path])
     let executable = try String(contentsOf: appPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
     let app = Process()
     app.executableURL = URL(fileURLWithPath: executable)

@@ -10,5 +10,5 @@ with tempfile.TemporaryDirectory(prefix="mac-winform-providers-") as directory:
     subprocess.run(["xcrun", "clang", "-dynamiclib", "-fobjc-arc", "-framework",
                     "AppKit", str(fixture / "Probe.m"), "-o", str(probe)], check=True)
     env = dict(os.environ, MAC_WINFORM_PROVIDER_PROBE=str(probe))
-    subprocess.run([str(fixture.parents[1] / "bin" / "mac-winform"), "run", str(fixture)],
+    subprocess.run(["dotnet", "winforms", "run", str(fixture)],
                    env=env, timeout=90, check=True)

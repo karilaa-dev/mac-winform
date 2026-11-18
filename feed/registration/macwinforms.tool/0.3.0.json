@@ -1,0 +1,7 @@
+{
+  "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/0.3.0.json",
+  "catalogEntry": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/0.3.0.json#catalog",
+  "listed": true,
+  "packageContent": "https://github.com/karilaa-dev/mac-winform/releases/download/v0.3.0/MacWinForms.Tool.0.3.0.nupkg",
+  "registration": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/macwinforms.tool/index.json"
+}

@@ -2,7 +2,7 @@
 
 This ordinary C# WinForms project exercises a split container, a tree, a checked list, a details list with columns, an editable data grid bound to a BindingSource, a text box, buttons, a slider and a progress bar. It uses a local in-memory collection and needs no service or account.
 
-Run it interactively with `dotnet run --project tests/Gallery` on Windows or `./bin/mac-winform run tests/Gallery` on macOS. Select a track, change its rating, edit the playlist name, adjust the volume and press **Apply**.
+Run it interactively with `dotnet run --project tests/Gallery` on Windows or `dotnet winforms tests/Gallery` on macOS. Select a track, change its rating, edit the playlist name, adjust the volume and press **Apply**.
 
 ## Reproduce the comparison
 
@@ -21,7 +21,7 @@ swift tests/Gallery/capture-macos.swift /tmp/record-library-mac
 python3 tests/Gallery/compare.py docs/gallery/windows/state.json /tmp/record-library-mac/state.json
 ```
 
-The helper builds through the public launcher, runs the same probe, selects the window by both process ID and title, and removes its title bar from the capture. The comparison checks all public state values and each reported client-relative rectangle. To compare the pixels at 100% scale, run the following with Pillow installed. The comparison reads unscaled RGB values and composites any transparent Mac window corners onto the form background. The extension has no Pillow dependency.
+The helper builds through the installed .NET tool, runs the same probe, selects the window by both process ID and title, and removes its title bar from the capture. The comparison checks all public state values and each reported client-relative rectangle. The optional pixel comparison below uses Pillow to compare unscaled RGB values and composite transparent Mac window corners onto the form background.
 
 ```sh
 python3 tests/Gallery/compare_pixels.py docs/gallery/windows/gallery.png /tmp/record-library-mac/gallery.png

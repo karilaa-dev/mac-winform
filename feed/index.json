@@ -1,0 +1,13 @@
+{
+  "version": "3.0.0",
+  "resources": [
+    {
+      "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/",
+      "@type": "RegistrationsBaseUrl/3.6.0"
+    },
+    {
+      "@id": "https://raw.githubusercontent.com/karilaa-dev/mac-winform/main/feed/registration/",
+      "@type": "RegistrationsBaseUrl"
+    }
+  ]
+}

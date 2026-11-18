@@ -18,6 +18,6 @@
   </ItemGroup>
   <Target Name="BuildAppKitBridge" BeforeTargets="PrepareForBuild" Inputs="@(BridgeSource);@(BridgeHeader);$(MSBuildProjectFullPath)" Outputs="$(NativeBridge)">
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(NativeBridge)'))" />
-    <Exec Command="xcrun clang -Os -dynamiclib -fobjc-arc -framework Cocoa -framework UniformTypeIdentifiers -install_name @rpath/libMacForms.dylib @(BridgeSource->'&quot;%(FullPath)&quot;', ' ') -o &quot;$(NativeBridge)&quot;" />
+    <Exec Command="xcrun clang -arch arm64 -arch x86_64 -mmacosx-version-min=11.0 -Os -dynamiclib -fobjc-arc -framework Cocoa -framework UniformTypeIdentifiers -install_name @rpath/libMacForms.dylib @(BridgeSource->'&quot;%(FullPath)&quot;', ' ') -o &quot;$(NativeBridge)&quot;" />
   </Target>
 </Project>

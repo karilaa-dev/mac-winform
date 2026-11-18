@@ -45,7 +45,7 @@ internal static class Program
             theme.SetParameters(VisualStyleElement.Button.CheckBox.MixedNormal);
             Check(image.GetPixel(32, 25).ToArgb() == theme.GetColor(ColorProperty.FillColor).ToArgb() &&
                 image.GetPixel(32, 28).GetBrightness() > .8, "Windows blue theme fill and light mixed mark");
-            // Our renderer uses the Windows default accent and field colors sampled for VibeHive.
+            // Compare the renderer with the sampled Windows default accent and field colors.
             theme.SetParameters(VisualStyleElement.TextBox.TextEdit.Focused);
             theme.DrawBackground(g, new Rectangle(52, 22, 25, 15), new Rectangle(52, 22, 12, 15));
             Check(image.GetPixel(52, 22).ToArgb() == theme.GetColor(ColorProperty.BorderColor).ToArgb(), "edit border matches theme property");
